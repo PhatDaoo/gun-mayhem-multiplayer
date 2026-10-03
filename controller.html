@@ -4,61 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Tay Cầm Gun Mayhem</title>
-    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
     <style>
-        body {
-            margin: 0; padding: 0; background-color: #1a1a1a; color: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex; flex-direction: column; height: 100vh;
-            touch-action: none; user-select: none; -webkit-user-select: none; overflow: hidden;
-        }
-        #setup {
-            flex: 1; display: flex; flex-direction: column; justify-content: center;
-            align-items: center; padding: 20px;
-        }
+        body { margin: 0; padding: 0; background-color: #1a1a1a; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; height: 100vh; touch-action: none; user-select: none; -webkit-user-select: none; overflow: hidden; }
+        #setup { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
         .player-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; max-width: 400px; }
-        .player-btn {
-            padding: 25px 20px; font-size: 20px; font-weight: bold; border-radius: 12px;
-            background-color: #4CAF50; color: white; border: none; cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: all 0.2s;
-        }
+        .player-btn { padding: 25px 20px; font-size: 20px; font-weight: bold; border-radius: 12px; background-color: #4CAF50; color: white; border: none; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: all 0.2s; }
         .player-btn:active { transform: scale(0.95); }
         .player-btn.taken { background-color: #555; color: #888; cursor: not-allowed; box-shadow: none; transform: none; }
         .player-btn.taken::after { content: " (Đã chọn)"; font-size: 14px; display: block; margin-top: 5px; }
         
         #gamepad { display: none; flex: 1; position: relative; }
-        
-        #top-bar {
-            position: absolute; top: 15px; left: 15px; right: 15px;
-            display: flex; justify-content: space-between; align-items: flex-start; z-index: 200;
-        }
-        #settings-btn, #leave-btn {
-            background: #444; color: white; border: none; padding: 10px 15px;
-            border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer;
-        }
+        #top-bar { position: absolute; top: 15px; left: 15px; right: 15px; display: flex; justify-content: space-between; align-items: flex-start; z-index: 200; }
+        #settings-btn, #leave-btn { background: #444; color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; }
         #leave-btn { background: #E53935; }
+        #player-label { position: absolute; width: 100%; text-align: center; top: 20px; font-size: 22px; font-weight: bold; color: #4CAF50; letter-spacing: 2px; pointer-events: none; }
         
-        #player-label {
-            position: absolute; width: 100%; text-align: center; top: 20px;
-            font-size: 22px; font-weight: bold; color: #4CAF50; letter-spacing: 2px; pointer-events: none;
-        }
-        
-        /* Edit Panel */
-        #edit-panel {
-            display: none; position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.85); padding: 15px 25px; border-radius: 10px; z-index: 300;
-            color: white; text-align: center; border: 2px solid #2196F3;
-        }
+        #edit-panel { display: none; position: absolute; top: 60px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); padding: 15px 25px; border-radius: 10px; z-index: 300; color: white; text-align: center; border: 2px solid #2196F3; }
         #edit-panel input[type=range] { width: 150px; margin: 10px 0; accent-color: #2196F3; }
-        #edit-panel button {
-            background: #2196F3; color: white; border: none; padding: 8px 25px;
-            border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 5px; font-size: 16px;
-        }
+        #edit-panel button { background: #2196F3; color: white; border: none; padding: 8px 25px; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 5px; font-size: 16px; }
 
-        /* Controls */
         .draggable-group { position: absolute; transform-origin: center center; touch-action: none; }
         
-        /* Default positions */
         #dpad-group { left: 10%; top: 55%; width: 160px; height: 160px; }
         #btn-jump-group { left: 80%; top: 40%; width: 70px; height: 70px; }
         #btn-shoot-group { left: 65%; top: 60%; width: 70px; height: 70px; }
@@ -68,38 +35,23 @@
         body.edit-mode .draggable-group.selected { border: 2px solid #2196F3; background: rgba(33, 150, 243, 0.2); }
         body.edit-mode .btn, body.edit-mode #joystick-base { pointer-events: none; }
 
-        /* Joystick Analog */
         .joystick-container { position: relative; width: 100%; height: 100%; }
-        #joystick-base {
-            position: absolute; left: 0; top: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 50%; box-sizing: border-box;
-        }
-        #joystick-stick {
-            position: absolute; left: 50%; top: 50%;
-            width: 60px; height: 60px; margin-left: -30px; margin-top: -30px;
-            background: rgba(255,255,255,0.5); border-radius: 50%;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5); pointer-events: none;
-            transition: left 0.1s, top 0.1s; /* smooth return to center */
-        }
+        #joystick-base { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; box-sizing: border-box; }
+        #joystick-stick { position: absolute; left: 50%; top: 50%; width: 60px; height: 60px; margin-left: -30px; margin-top: -30px; background: rgba(255,255,255,0.5); border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.5); pointer-events: none; transition: left 0.1s, top 0.1s; }
 
-        /* Independent Action Buttons */
-        .btn {
-            position: absolute; left: 0; top: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.15); border: 2px solid #888;
-            border-radius: 50%; display: flex; justify-content: center; align-items: center;
-            font-weight: bold; font-size: 20px; text-transform: uppercase; box-sizing: border-box;
-        }
-        
+        .btn { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.15); border: 2px solid #888; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 20px; text-transform: uppercase; box-sizing: border-box; }
         #btn-jump { background: rgba(76, 175, 80, 0.4); border-color: #4CAF50; }
         #btn-shoot { background: rgba(244, 67, 54, 0.4); border-color: #F44336; }
         #btn-bomb { background: rgba(33, 150, 243, 0.4); border-color: #2196F3; }
+        
+        #connection-status { margin-top: 20px; color: #ffeb3b; font-weight: bold; }
     </style>
 </head>
 <body>
     <div id="setup">
-        <h2 style="margin-bottom: 30px;">🎮 CHỌN TAY CẦM</h2>
-        <div class="player-btns">
+        <h2 style="margin-bottom: 10px;">🎮 CHỌN TAY CẦM</h2>
+        <div id="connection-status">Đang kết nối tới Máy chủ P2P...</div>
+        <div class="player-btns" id="player-btns" style="opacity: 0.5; pointer-events: none;">
             <button class="player-btn" id="pbtn-1" onclick="selectPlayer(1)">Player 1</button>
             <button class="player-btn" id="pbtn-2" onclick="selectPlayer(2)">Player 2</button>
             <button class="player-btn" id="pbtn-3" onclick="selectPlayer(3)">Player 3</button>
@@ -121,7 +73,6 @@
 
         <div id="player-label"></div>
         
-        <!-- Joystick -->
         <div class="draggable-group" id="dpad-group" data-scale="1">
             <div class="joystick-container" id="joystick-container">
                 <div id="joystick-base"></div>
@@ -129,7 +80,6 @@
             </div>
         </div>
         
-        <!-- Các nút bấm độc lập -->
         <div class="draggable-group" id="btn-jump-group" data-scale="1">
             <div class="btn action-btn" id="btn-jump" data-action="up">Nhảy</div>
         </div>
@@ -142,269 +92,186 @@
     </div>
 
     <script>
-        const socket = io();
+        // --- WEBRTC CONTROLLER LOGIC ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const hostId = urlParams.get('host');
+        
         let playerNum = null;
+        let conn = null;
+        
+        const statusEl = document.getElementById('connection-status');
+        const btnsEl = document.getElementById('player-btns');
 
-        socket.on('playersUpdate', (taken) => {
-            for (let i = 1; i <= 4; i++) {
-                const btn = document.getElementById(`pbtn-${i}`);
-                if (taken.includes(i) && playerNum !== i) {
-                    btn.classList.add('taken'); btn.disabled = true;
-                } else {
-                    btn.classList.remove('taken'); btn.disabled = false;
-                }
-            }
-        });
+        if (!hostId) {
+            statusEl.innerText = '❌ Lỗi: Không tìm thấy Host ID. Vui lòng quét mã QR từ màn hình Game!';
+            statusEl.style.color = '#F44336';
+        } else {
+            const peer = new Peer();
+            peer.on('open', (id) => {
+                statusEl.innerText = 'Đang tìm kiếm Máy tính...';
+                conn = peer.connect(hostId);
+                
+                conn.on('open', () => {
+                    statusEl.innerText = '✅ Đã kết nối! Hãy chọn Player:';
+                    statusEl.style.color = '#4CAF50';
+                    btnsEl.style.opacity = '1';
+                    btnsEl.style.pointerEvents = 'auto';
+                });
 
-        function selectPlayer(num) {
-            socket.emit('requestPlayer', num, (response) => {
-                if (response.success) {
-                    playerNum = num;
-                    document.getElementById('setup').style.display = 'none';
-                    document.getElementById('gamepad').style.display = 'block';
-                    
-                    const colors = ['#F44336', '#4CAF50', '#2196F3', '#FFEB3B'];
-                    document.getElementById('player-label').innerText = `PLAYER ${num}`;
-                    document.getElementById('player-label').style.color = colors[num-1];
+                conn.on('data', (data) => {
+                    if (data.type === 'playersUpdate') {
+                        const taken = data.taken;
+                        for (let i = 1; i <= 4; i++) {
+                            const btn = document.getElementById(`pbtn-${i}`);
+                            if (taken.includes(i) && playerNum !== i) {
+                                btn.classList.add('taken'); btn.disabled = true;
+                            } else {
+                                btn.classList.remove('taken'); btn.disabled = false;
+                            }
+                        }
+                    } else if (data.type === 'requestPlayerResponse') {
+                        if (data.success) {
+                            playerNum = data.num;
+                            document.getElementById('setup').style.display = 'none';
+                            document.getElementById('gamepad').style.display = 'block';
+                            
+                            const colors = ['#F44336', '#4CAF50', '#2196F3', '#FFEB3B'];
+                            document.getElementById('player-label').innerText = `PLAYER ${playerNum}`;
+                            document.getElementById('player-label').style.color = colors[playerNum-1];
 
-                    if (document.documentElement.requestFullscreen) {
-                        document.documentElement.requestFullscreen().catch(()=>{});
+                            if (document.documentElement.requestFullscreen) {
+                                document.documentElement.requestFullscreen().catch(()=>{});
+                            }
+                            loadLayout();
+                        } else {
+                            alert(data.message);
+                        }
                     }
-                    loadLayout();
-                } else {
-                    alert(response.message);
-                }
+                });
+                
+                conn.on('close', () => {
+                    alert('Đã mất kết nối với máy tính! (Màn hình game đã bị đóng)');
+                    location.reload();
+                });
+                
+                peer.on('error', (err) => {
+                    statusEl.innerText = '❌ Lỗi kết nối P2P: ' + err.type;
+                    statusEl.style.color = '#F44336';
+                });
             });
         }
 
+        function selectPlayer(num) {
+            if (conn && conn.open) {
+                conn.send({ type: 'requestPlayer', num: num });
+            }
+        }
+
         function sendAction(action, state) {
-            if (playerNum && !isEditMode) {
-                socket.emit('controllerAction', { player: playerNum, action: action, state: state });
+            if (playerNum && !isEditMode && conn && conn.open) {
+                conn.send({ type: 'action', player: playerNum, action: action, state: state });
             }
         }
 
         // --- Action Buttons ---
         const actionButtons = document.querySelectorAll('.action-btn');
         actionButtons.forEach(btn => {
-            btn.addEventListener('touchstart', (e) => {
-                if(isEditMode) return;
-                e.preventDefault();
-                btn.style.opacity = '0.5';
-                sendAction(btn.dataset.action, 'pressed');
-            }, {passive: false});
-
-            btn.addEventListener('touchend', (e) => {
-                if(isEditMode) return;
-                e.preventDefault();
-                btn.style.opacity = '1';
-                sendAction(btn.dataset.action, 'released');
-            }, {passive: false});
-
-            btn.addEventListener('mousedown', (e) => {
-                if(isEditMode) return;
-                btn.style.opacity = '0.5';
-                sendAction(btn.dataset.action, 'pressed');
-            });
-            btn.addEventListener('mouseup', (e) => {
-                if(isEditMode) return;
-                btn.style.opacity = '1';
-                sendAction(btn.dataset.action, 'released');
-            });
+            btn.addEventListener('touchstart', (e) => { if(isEditMode) return; e.preventDefault(); btn.style.opacity = '0.5'; sendAction(btn.dataset.action, 'pressed'); }, {passive: false});
+            btn.addEventListener('touchend', (e) => { if(isEditMode) return; e.preventDefault(); btn.style.opacity = '1'; sendAction(btn.dataset.action, 'released'); }, {passive: false});
+            btn.addEventListener('mousedown', (e) => { if(isEditMode) return; btn.style.opacity = '0.5'; sendAction(btn.dataset.action, 'pressed'); });
+            btn.addEventListener('mouseup', (e) => { if(isEditMode) return; btn.style.opacity = '1'; sendAction(btn.dataset.action, 'released'); });
         });
 
         // --- Analog Joystick Logic ---
         const joystickBase = document.getElementById('joystick-base');
         const joystickStick = document.getElementById('joystick-stick');
-        let joyActive = false;
-        let joyIdentifier = null;
-        let currentJoyX = 'none';
-        let currentJoyY = 'none';
+        let joyActive = false; let joyIdentifier = null; let currentJoyX = 'none'; let currentJoyY = 'none';
 
         function handleJoyStart(e) {
-            if (isEditMode) return;
-            e.preventDefault();
-            joyActive = true;
-            joystickStick.style.transition = 'none';
-            if (e.changedTouches) {
-                joyIdentifier = e.changedTouches[0].identifier;
-                updateJoyPosition(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
-            } else {
-                updateJoyPosition(e.clientX, e.clientY);
-            }
+            if (isEditMode) return; e.preventDefault(); joyActive = true; joystickStick.style.transition = 'none';
+            if (e.changedTouches) { joyIdentifier = e.changedTouches[0].identifier; updateJoyPosition(e.changedTouches[0].clientX, e.changedTouches[0].clientY); }
+            else { updateJoyPosition(e.clientX, e.clientY); }
         }
 
         function handleJoyMove(e) {
-            if (!joyActive || isEditMode) return;
-            e.preventDefault();
-            let clientX, clientY;
+            if (!joyActive || isEditMode) return; e.preventDefault(); let clientX, clientY;
             if (e.changedTouches) {
-                for (let i = 0; i < e.changedTouches.length; i++) {
-                    if (e.changedTouches[i].identifier === joyIdentifier) {
-                        clientX = e.changedTouches[i].clientX;
-                        clientY = e.changedTouches[i].clientY;
-                        break;
-                    }
-                }
+                for (let i = 0; i < e.changedTouches.length; i++) { if (e.changedTouches[i].identifier === joyIdentifier) { clientX = e.changedTouches[i].clientX; clientY = e.changedTouches[i].clientY; break; } }
                 if (!clientX) return;
-            } else {
-                clientX = e.clientX;
-                clientY = e.clientY;
-            }
+            } else { clientX = e.clientX; clientY = e.clientY; }
             updateJoyPosition(clientX, clientY);
         }
 
         function handleJoyEnd(e) {
             if (!joyActive || isEditMode) return;
-            if (e.changedTouches) {
-                let found = false;
-                for (let i = 0; i < e.changedTouches.length; i++) {
-                    if (e.changedTouches[i].identifier === joyIdentifier) found = true;
-                }
-                if (!found) return;
-            }
-            e.preventDefault();
-            joyActive = false;
-            joyIdentifier = null;
-            
-            joystickStick.style.transition = 'left 0.1s, top 0.1s';
-            joystickStick.style.left = '50%';
-            joystickStick.style.top = '50%';
-            
+            if (e.changedTouches) { let found = false; for (let i = 0; i < e.changedTouches.length; i++) { if (e.changedTouches[i].identifier === joyIdentifier) found = true; } if (!found) return; }
+            e.preventDefault(); joyActive = false; joyIdentifier = null;
+            joystickStick.style.transition = 'left 0.1s, top 0.1s'; joystickStick.style.left = '50%'; joystickStick.style.top = '50%';
             if (currentJoyX !== 'none') { sendAction(currentJoyX, 'released'); currentJoyX = 'none'; }
             if (currentJoyY !== 'none') { sendAction(currentJoyY, 'released'); currentJoyY = 'none'; }
         }
 
         function updateJoyPosition(clientX, clientY) {
-            const rect = joystickBase.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-            
-            let dx = clientX - centerX;
-            let dy = clientY - centerY;
-            
-            const distance = Math.sqrt(dx*dx + dy*dy);
-            const maxRadius = rect.width / 2;
-            
-            if (distance > maxRadius) {
-                dx = (dx / distance) * maxRadius;
-                dy = (dy / distance) * maxRadius;
-            }
-            
-            joystickStick.style.left = `calc(50% + ${dx}px)`;
-            joystickStick.style.top = `calc(50% + ${dy}px)`;
-            
+            const rect = joystickBase.getBoundingClientRect(); const centerX = rect.left + rect.width / 2; const centerY = rect.top + rect.height / 2;
+            let dx = clientX - centerX; let dy = clientY - centerY;
+            const distance = Math.sqrt(dx*dx + dy*dy); const maxRadius = rect.width / 2;
+            if (distance > maxRadius) { dx = (dx / distance) * maxRadius; dy = (dy / distance) * maxRadius; }
+            joystickStick.style.left = `calc(50% + ${dx}px)`; joystickStick.style.top = `calc(50% + ${dy}px)`;
             const threshold = maxRadius * 0.25;
-            
-            let newJoyX = 'none';
-            if (dx < -threshold) newJoyX = 'left';
-            else if (dx > threshold) newJoyX = 'right';
-            
-            let newJoyY = 'none';
-            if (dy > threshold) newJoyY = 'down'; 
-            
-            if (newJoyX !== currentJoyX) {
-                if (currentJoyX !== 'none') sendAction(currentJoyX, 'released');
-                if (newJoyX !== 'none') sendAction(newJoyX, 'pressed');
-                currentJoyX = newJoyX;
-            }
-            if (newJoyY !== currentJoyY) {
-                if (currentJoyY !== 'none') sendAction(currentJoyY, 'released');
-                if (newJoyY !== 'none') sendAction(newJoyY, 'pressed');
-                currentJoyY = newJoyY;
-            }
+            let newJoyX = 'none'; if (dx < -threshold) newJoyX = 'left'; else if (dx > threshold) newJoyX = 'right';
+            let newJoyY = 'none'; if (dy > threshold) newJoyY = 'down'; 
+            if (newJoyX !== currentJoyX) { if (currentJoyX !== 'none') sendAction(currentJoyX, 'released'); if (newJoyX !== 'none') sendAction(newJoyX, 'pressed'); currentJoyX = newJoyX; }
+            if (newJoyY !== currentJoyY) { if (currentJoyY !== 'none') sendAction(currentJoyY, 'released'); if (newJoyY !== 'none') sendAction(newJoyY, 'pressed'); currentJoyY = newJoyY; }
         }
 
-        joystickBase.addEventListener('touchstart', handleJoyStart, {passive: false});
-        document.addEventListener('touchmove', handleJoyMove, {passive: false});
-        document.addEventListener('touchend', handleJoyEnd);
-        joystickBase.addEventListener('mousedown', handleJoyStart);
-        document.addEventListener('mousemove', handleJoyMove);
-        document.addEventListener('mouseup', handleJoyEnd);
+        joystickBase.addEventListener('touchstart', handleJoyStart, {passive: false}); document.addEventListener('touchmove', handleJoyMove, {passive: false}); document.addEventListener('touchend', handleJoyEnd);
+        joystickBase.addEventListener('mousedown', handleJoyStart); document.addEventListener('mousemove', handleJoyMove); document.addEventListener('mouseup', handleJoyEnd);
 
 
         // --- CUSTOMIZATION LOGIC ---
-        let isEditMode = false;
-        let selectedGroup = null;
-        let isDragging = false;
-        let startX, startY, initialLeft, initialTop;
-        const slider = document.getElementById('size-slider');
-        const groups = document.querySelectorAll('.draggable-group');
+        let isEditMode = false; let selectedGroup = null; let isDragging = false; let startX, startY, initialLeft, initialTop;
+        const slider = document.getElementById('size-slider'); const groups = document.querySelectorAll('.draggable-group');
 
         function toggleEditMode() {
             isEditMode = !isEditMode;
             if (isEditMode) {
-                document.body.classList.add('edit-mode');
-                document.getElementById('edit-panel').style.display = 'block';
-                document.getElementById('settings-btn').innerText = 'Hủy';
-                document.getElementById('settings-btn').style.background = '#888';
+                document.body.classList.add('edit-mode'); document.getElementById('edit-panel').style.display = 'block';
+                document.getElementById('settings-btn').innerText = 'Hủy'; document.getElementById('settings-btn').style.background = '#888';
                 selectGroup(document.getElementById('dpad-group'));
             } else {
-                document.body.classList.remove('edit-mode');
-                document.getElementById('edit-panel').style.display = 'none';
-                document.getElementById('settings-btn').innerText = '⚙️ Tùy chỉnh';
-                document.getElementById('settings-btn').style.background = '#444';
-                if (selectedGroup) {
-                    selectedGroup.classList.remove('selected');
-                    selectedGroup = null;
-                }
+                document.body.classList.remove('edit-mode'); document.getElementById('edit-panel').style.display = 'none';
+                document.getElementById('settings-btn').innerText = '⚙️ Tùy chỉnh'; document.getElementById('settings-btn').style.background = '#444';
+                if (selectedGroup) { selectedGroup.classList.remove('selected'); selectedGroup = null; }
                 saveLayout();
             }
         }
 
         function selectGroup(group) {
             if (selectedGroup) selectedGroup.classList.remove('selected');
-            selectedGroup = group;
-            selectedGroup.classList.add('selected');
+            selectedGroup = group; selectedGroup.classList.add('selected');
             slider.value = parseFloat(group.dataset.scale || 1);
         }
 
-        slider.addEventListener('input', (e) => {
-            if (selectedGroup) {
-                const scale = e.target.value;
-                selectedGroup.dataset.scale = scale;
-                selectedGroup.style.transform = `scale(${scale})`;
-            }
-        });
+        slider.addEventListener('input', (e) => { if (selectedGroup) { const scale = e.target.value; selectedGroup.dataset.scale = scale; selectedGroup.style.transform = `scale(${scale})`; } });
 
-        groups.forEach(group => {
-            group.addEventListener('touchstart', dragStart, {passive: false});
-            group.addEventListener('mousedown', dragStart);
-        });
-        document.addEventListener('touchmove', dragMove, {passive: false});
-        document.addEventListener('mousemove', dragMove);
-        document.addEventListener('touchend', () => isDragging = false);
-        document.addEventListener('mouseup', () => isDragging = false);
+        groups.forEach(group => { group.addEventListener('touchstart', dragStart, {passive: false}); group.addEventListener('mousedown', dragStart); });
+        document.addEventListener('touchmove', dragMove, {passive: false}); document.addEventListener('mousemove', dragMove);
+        document.addEventListener('touchend', () => isDragging = false); document.addEventListener('mouseup', () => isDragging = false);
 
         function dragStart(e) {
-            if (!isEditMode) return;
-            e.preventDefault();
-            selectGroup(this);
-            isDragging = true;
-            startX = e.touches ? e.touches[0].clientX : e.clientX;
-            startY = e.touches ? e.touches[0].clientY : e.clientY;
-            initialLeft = selectedGroup.offsetLeft;
-            initialTop = selectedGroup.offsetTop;
+            if (!isEditMode) return; e.preventDefault(); selectGroup(this); isDragging = true;
+            startX = e.touches ? e.touches[0].clientX : e.clientX; startY = e.touches ? e.touches[0].clientY : e.clientY;
+            initialLeft = selectedGroup.offsetLeft; initialTop = selectedGroup.offsetTop;
         }
 
         function dragMove(e) {
-            if (!isDragging || !isEditMode || !selectedGroup) return;
-            e.preventDefault();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            let newLeft = initialLeft + (clientX - startX);
-            let newTop = initialTop + (clientY - startY);
-            selectedGroup.style.left = (newLeft / window.innerWidth * 100) + '%';
-            selectedGroup.style.top = (newTop / window.innerHeight * 100) + '%';
+            if (!isDragging || !isEditMode || !selectedGroup) return; e.preventDefault();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            let newLeft = initialLeft + (clientX - startX); let newTop = initialTop + (clientY - startY);
+            selectedGroup.style.left = (newLeft / window.innerWidth * 100) + '%'; selectedGroup.style.top = (newTop / window.innerHeight * 100) + '%';
         }
 
-        function saveLayout() {
-            const layout = {};
-            groups.forEach(g => {
-                layout[g.id] = { left: g.style.left, top: g.style.top, scale: g.dataset.scale };
-            });
-            localStorage.setItem('gunMayhemLayout', JSON.stringify(layout));
-        }
-
+        function saveLayout() { const layout = {}; groups.forEach(g => { layout[g.id] = { left: g.style.left, top: g.style.top, scale: g.dataset.scale }; }); localStorage.setItem('gunMayhemLayout', JSON.stringify(layout)); }
         function loadLayout() {
             const saved = localStorage.getItem('gunMayhemLayout');
             if (saved) {
@@ -413,10 +280,7 @@
                     if (layout[g.id]) {
                         if (layout[g.id].left) g.style.left = layout[g.id].left;
                         if (layout[g.id].top) g.style.top = layout[g.id].top;
-                        if (layout[g.id].scale) {
-                            g.dataset.scale = layout[g.id].scale;
-                            g.style.transform = `scale(${layout[g.id].scale})`;
-                        }
+                        if (layout[g.id].scale) { g.dataset.scale = layout[g.id].scale; g.style.transform = `scale(${layout[g.id].scale})`; }
                     }
                 });
             }

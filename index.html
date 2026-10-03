@@ -4,49 +4,31 @@
     <title>Gun Mayhem | BCHS Unblocked Games</title>
     <link rel="icon" type="image/x-icon" href="icon.jpg" />
     <link rel="shortcut icon" type="image/x-icon" href="icon.jpg" />
-    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         #ruffle { width: 100%; height: 100%; }
         
         #lobby {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.85);
-            border-radius: 8px;
-            padding: 12px 15px;
-            color: white;
-            z-index: 100;
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(255,255,255,0.2);
-            transition: all 0.3s ease;
+            position: absolute; top: 10px; left: 10px; background: rgba(0, 0, 0, 0.85);
+            border-radius: 8px; padding: 12px 15px; color: white; z-index: 100;
+            backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.2); transition: all 0.3s ease;
         }
         
         #lobby-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            padding-bottom: 8px;
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;
         }
         #lobby-title { font-size: 14px; font-weight: bold; text-transform: uppercase; color: #4CAF50; }
         
         #toggle-btn {
-            background: #333; color: white; border: 1px solid #555;
-            border-radius: 4px; padding: 2px 8px; font-size: 11px;
-            cursor: pointer; transition: 0.2s;
+            background: #333; color: white; border: 1px solid #555; border-radius: 4px;
+            padding: 2px 8px; font-size: 11px; cursor: pointer; transition: 0.2s;
         }
         #toggle-btn:hover { background: #555; }
 
-        #expanded-view {
-            display: flex;
-            gap: 20px;
-            align-items: center;
-        }
-        
+        #expanded-view { display: flex; gap: 20px; align-items: center; }
         #lobby-left { display: flex; flex-direction: column; }
         
         .slot { display: flex; align-items: center; margin-bottom: 8px; font-weight: bold; font-size: 13px; }
@@ -78,7 +60,7 @@
         </div>
 
         <div id="minimized-view">
-            <span id="mini-status">⏳ Chưa có tay cầm nào</span>
+            <span id="mini-status">⏳ Đang tạo phòng (Host)...</span>
         </div>
         
         <div id="expanded-view">
@@ -87,9 +69,9 @@
                 <div id="slot-2" class="slot"><div class="dot"></div> Player 2 (WASD, T, Y)</div>
                 <div id="slot-3" class="slot"><div class="dot"></div> Player 3 (IJKL, P, O)</div>
                 <div id="slot-4" class="slot"><div class="dot"></div> Player 4 (Numpad, 1, 2)</div>
-                <div id="connect-info">Đang kết nối Server...</div>
+                <div id="connect-info">Đang khởi tạo máy chủ WebRTC...</div>
             </div>
-            <div id="qr-container">
+            <div id="qr-container" style="display: none;">
                 <div id="qr-text">Quét để chơi</div>
                 <div id="qrcode"></div>
             </div>
@@ -120,26 +102,77 @@
           4: { up: {code:'Numpad8',key:'8',keyCode:104}, down: {code:'Numpad5',key:'5',keyCode:101}, left: {code:'Numpad4',key:'4',keyCode:100}, right: {code:'Numpad6',key:'6',keyCode:102}, shoot: {code:'Numpad1',key:'1',keyCode:97}, bomb: {code:'Numpad2',key:'2',keyCode:98} }
       };
 
-      const socket = io();
-      
-      socket.on('connect', () => {
-          socket.emit('registerHost');
-          
-          const controllerUrl = window.location.origin + '/controller.html';
+      // --- WEBRTC HOST LOGIC ---
+      const peer = new Peer();
+      let connections = [];
+      let playerMap = {}; // peerId -> playerNum
+
+      peer.on('open', (id) => {
+          const controllerUrl = window.location.origin + window.location.pathname.replace('index.html', '') + 'controller.html?host=' + id;
           document.getElementById('connect-info').innerText = '✅ Quét mã QR bên cạnh để chơi';
+          document.getElementById('qr-container').style.display = 'flex';
           
           document.getElementById("qrcode").innerHTML = "";
           new QRCode(document.getElementById("qrcode"), {
               text: controllerUrl,
-              width: 90,
-              height: 90,
-              colorDark : "#000000",
-              colorLight : "#ffffff",
-              correctLevel : QRCode.CorrectLevel.L
+              width: 90, height: 90,
+              colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.L
+          });
+          updateLobbyUI();
+      });
+
+      function getTakenSlots() {
+          return Object.values(playerMap);
+      }
+
+      function broadcast(data) {
+          connections.forEach(conn => {
+              if (conn.open) conn.send(data);
+          });
+      }
+
+      peer.on('connection', (conn) => {
+          connections.push(conn);
+          
+          conn.on('open', () => {
+              conn.send({ type: 'playersUpdate', taken: getTakenSlots() });
+          });
+
+          conn.on('data', (data) => {
+              if (data.type === 'requestPlayer') {
+                  const taken = getTakenSlots();
+                  if (taken.includes(data.num)) {
+                      conn.send({ type: 'requestPlayerResponse', success: false, message: 'Slot này đã có người chơi!' });
+                  } else {
+                      for (let [pid, pNum] of Object.entries(playerMap)) {
+                          if (pid === conn.peer) delete playerMap[pid];
+                      }
+                      playerMap[conn.peer] = data.num;
+                      conn.send({ type: 'requestPlayerResponse', success: true, num: data.num });
+                      
+                      broadcast({ type: 'playersUpdate', taken: getTakenSlots() });
+                      updateLobbyUI();
+                  }
+              } else if (data.type === 'action') {
+                  const player = playerMap[conn.peer];
+                  if (player && data.player === player) {
+                      simulateKey(player, data.action, data.state);
+                  }
+              }
+          });
+
+          conn.on('close', () => {
+              if (playerMap[conn.peer]) {
+                  delete playerMap[conn.peer];
+                  broadcast({ type: 'playersUpdate', taken: getTakenSlots() });
+                  updateLobbyUI();
+              }
+              connections = connections.filter(c => c.peer !== conn.peer);
           });
       });
 
-      socket.on('playersUpdate', (takenSlots) => {
+      function updateLobbyUI() {
+          const takenSlots = getTakenSlots();
           let miniText = [];
           for(let i=1; i<=4; i++) {
               const el = document.getElementById(`slot-${i}`);
@@ -159,25 +192,21 @@
           } else {
               miniStatus.innerHTML = `⏳ Chưa có tay cầm nào`;
           }
-      });
+      }
 
-      socket.on('simulateKey', (data) => {
-          const { player, action, state } = data;
+      function simulateKey(player, action, state) {
           const keyDef = keyMap[player][action];
           if (!keyDef) return;
 
           const eventType = state === 'pressed' ? 'keydown' : 'keyup';
           const event = new KeyboardEvent(eventType, {
-              key: keyDef.key,
-              code: keyDef.code,
-              keyCode: keyDef.keyCode,
-              which: keyDef.keyCode,
-              bubbles: true,
-              cancelable: true
+              key: keyDef.key, code: keyDef.code, keyCode: keyDef.keyCode, which: keyDef.keyCode,
+              bubbles: true, cancelable: true
           });
           window.dispatchEvent(event);
-      });
+      }
 
+      // --- RUFFLE LOGIC ---
       window.RufflePlayer = window.RufflePlayer || {};
       window.addEventListener("load", (event) => {
         const ruffle = window.RufflePlayer.newest();
