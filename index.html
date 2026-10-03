@@ -1,0 +1,194 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gun Mayhem | BCHS Unblocked Games</title>
+    <link rel="icon" type="image/x-icon" href="icon.jpg" />
+    <link rel="shortcut icon" type="image/x-icon" href="icon.jpg" />
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #ruffle { width: 100%; height: 100%; }
+        
+        #lobby {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.85);
+            border-radius: 8px;
+            padding: 12px 15px;
+            color: white;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s ease;
+        }
+        
+        #lobby-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 8px;
+        }
+        #lobby-title { font-size: 14px; font-weight: bold; text-transform: uppercase; color: #4CAF50; }
+        
+        #toggle-btn {
+            background: #333; color: white; border: 1px solid #555;
+            border-radius: 4px; padding: 2px 8px; font-size: 11px;
+            cursor: pointer; transition: 0.2s;
+        }
+        #toggle-btn:hover { background: #555; }
+
+        #expanded-view {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        #lobby-left { display: flex; flex-direction: column; }
+        
+        .slot { display: flex; align-items: center; margin-bottom: 8px; font-weight: bold; font-size: 13px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 10px; background: #555; box-shadow: 0 0 5px #000; }
+        .slot.connected .dot { background: #0f0; box-shadow: 0 0 8px #0f0; }
+        .slot.connected { color: #fff; }
+        .slot:not(.connected) { color: #888; }
+        
+        #connect-info { font-size: 12px; color: #aaa; margin-top: 5px; border-top: 1px dashed #444; padding-top: 8px; }
+
+        #qr-container { background: white; padding: 5px; border-radius: 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #qrcode { margin-top: 2px; }
+        #qr-text { color: black; font-size: 10px; font-weight: bold; text-align: center; }
+
+        /* Minimized State */
+        #minimized-view { display: none; font-size: 13px; font-weight: bold; padding: 5px 0; }
+        #lobby.minimized #expanded-view { display: none; }
+        #lobby.minimized #minimized-view { display: block; }
+        #lobby.minimized #lobby-header { margin-bottom: 0; border-bottom: none; padding-bottom: 0; gap: 15px; }
+        #lobby.minimized #lobby-title { display: none; }
+    </style>
+  </head>
+  <body>
+    
+    <div id="lobby">
+        <div id="lobby-header">
+            <span id="lobby-title">🎮 Cài đặt tay cầm</span>
+            <button id="toggle-btn" onclick="toggleLobby()">➖ Thu nhỏ</button>
+        </div>
+
+        <div id="minimized-view">
+            <span id="mini-status">⏳ Chưa có tay cầm nào</span>
+        </div>
+        
+        <div id="expanded-view">
+            <div id="lobby-left">
+                <div id="slot-1" class="slot"><div class="dot"></div> Player 1 (Mũi tên, Z, X)</div>
+                <div id="slot-2" class="slot"><div class="dot"></div> Player 2 (WASD, T, Y)</div>
+                <div id="slot-3" class="slot"><div class="dot"></div> Player 3 (IJKL, P, O)</div>
+                <div id="slot-4" class="slot"><div class="dot"></div> Player 4 (Numpad, 1, 2)</div>
+                <div id="connect-info">Đang kết nối Server...</div>
+            </div>
+            <div id="qr-container">
+                <div id="qr-text">Quét để chơi</div>
+                <div id="qrcode"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="ruffle"></div>
+    <script src="ruffle.js"></script>
+    <script>
+      let isLobbyMinimized = false;
+      function toggleLobby() {
+          isLobbyMinimized = !isLobbyMinimized;
+          const lobby = document.getElementById('lobby');
+          const btn = document.getElementById('toggle-btn');
+          if (isLobbyMinimized) {
+              lobby.classList.add('minimized');
+              btn.innerText = '➕ Hiện mã QR';
+          } else {
+              lobby.classList.remove('minimized');
+              btn.innerText = '➖ Thu nhỏ';
+          }
+      }
+
+      const keyMap = {
+          1: { up: {code:'ArrowUp',key:'ArrowUp',keyCode:38}, down: {code:'ArrowDown',key:'ArrowDown',keyCode:40}, left: {code:'ArrowLeft',key:'ArrowLeft',keyCode:37}, right: {code:'ArrowRight',key:'ArrowRight',keyCode:39}, shoot: {code:'KeyZ',key:'z',keyCode:90}, bomb: {code:'KeyX',key:'x',keyCode:88} },
+          2: { up: {code:'KeyW',key:'w',keyCode:87}, down: {code:'KeyS',key:'s',keyCode:83}, left: {code:'KeyA',key:'a',keyCode:65}, right: {code:'KeyD',key:'d',keyCode:68}, shoot: {code:'KeyT',key:'t',keyCode:84}, bomb: {code:'KeyY',key:'y',keyCode:89} },
+          3: { up: {code:'KeyI',key:'i',keyCode:73}, down: {code:'KeyK',key:'k',keyCode:75}, left: {code:'KeyJ',key:'j',keyCode:74}, right: {code:'KeyL',key:'l',keyCode:76}, shoot: {code:'KeyP',key:'p',keyCode:80}, bomb: {code:'KeyO',key:'o',keyCode:79} },
+          4: { up: {code:'Numpad8',key:'8',keyCode:104}, down: {code:'Numpad5',key:'5',keyCode:101}, left: {code:'Numpad4',key:'4',keyCode:100}, right: {code:'Numpad6',key:'6',keyCode:102}, shoot: {code:'Numpad1',key:'1',keyCode:97}, bomb: {code:'Numpad2',key:'2',keyCode:98} }
+      };
+
+      const socket = io();
+      
+      socket.on('connect', () => {
+          socket.emit('registerHost');
+          
+          const controllerUrl = window.location.origin + '/controller.html';
+          document.getElementById('connect-info').innerText = '✅ Quét mã QR bên cạnh để chơi';
+          
+          document.getElementById("qrcode").innerHTML = "";
+          new QRCode(document.getElementById("qrcode"), {
+              text: controllerUrl,
+              width: 90,
+              height: 90,
+              colorDark : "#000000",
+              colorLight : "#ffffff",
+              correctLevel : QRCode.CorrectLevel.L
+          });
+      });
+
+      socket.on('playersUpdate', (takenSlots) => {
+          let miniText = [];
+          for(let i=1; i<=4; i++) {
+              const el = document.getElementById(`slot-${i}`);
+              if (takenSlots.includes(i)) {
+                  el.classList.add('connected');
+                  el.innerHTML = `<div class="dot"></div> Player ${i} - ĐÃ KẾT NỐI 📱`;
+                  miniText.push(`P${i}`);
+              } else {
+                  el.classList.remove('connected');
+                  el.innerHTML = `<div class="dot"></div> Player ${i} - Đang chờ...`;
+              }
+          }
+          
+          const miniStatus = document.getElementById('mini-status');
+          if (miniText.length > 0) {
+              miniStatus.innerHTML = `🎮 Đang chơi: <span style="color:#0f0">${miniText.join(', ')}</span>`;
+          } else {
+              miniStatus.innerHTML = `⏳ Chưa có tay cầm nào`;
+          }
+      });
+
+      socket.on('simulateKey', (data) => {
+          const { player, action, state } = data;
+          const keyDef = keyMap[player][action];
+          if (!keyDef) return;
+
+          const eventType = state === 'pressed' ? 'keydown' : 'keyup';
+          const event = new KeyboardEvent(eventType, {
+              key: keyDef.key,
+              code: keyDef.code,
+              keyCode: keyDef.keyCode,
+              which: keyDef.keyCode,
+              bubbles: true,
+              cancelable: true
+          });
+          window.dispatchEvent(event);
+      });
+
+      window.RufflePlayer = window.RufflePlayer || {};
+      window.addEventListener("load", (event) => {
+        const ruffle = window.RufflePlayer.newest();
+        const player = ruffle.createPlayer();
+        const container = document.getElementById("ruffle");
+        player.id = "player";
+        player.style.width = "100%";
+        player.style.height = "100%";
+        container.appendChild(player);
+        player.load("swf.swf");
+      });
+    </script>
+  </body>
+</html>
