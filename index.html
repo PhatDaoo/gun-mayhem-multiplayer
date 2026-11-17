@@ -1,223 +1,191 @@
-<html>
-  <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Gun Mayhem | BCHS Unblocked Games</title>
-    <link rel="icon" type="image/x-icon" href="icon.jpg" />
-    <link rel="shortcut icon" type="image/x-icon" href="icon.jpg" />
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gun Mayhem 2: More Mayhem | Native HTML5 & Phone Console</title>
+    <link rel="icon" type="image/jpeg" href="icon.jpg" />
+    <link rel="stylesheet" href="css/style.css" />
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        #ruffle { width: 100%; height: 100%; }
-        
-        #lobby {
-            position: absolute; top: 10px; left: 10px; background: rgba(0, 0, 0, 0.85);
-            border-radius: 8px; padding: 12px 15px; color: white; z-index: 100;
-            backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.2); transition: all 0.3s ease;
-        }
-        
-        #lobby-header {
-            display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
-            border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;
-        }
-        #lobby-title { font-size: 14px; font-weight: bold; text-transform: uppercase; color: #4CAF50; }
-        
-        #toggle-btn {
-            background: #333; color: white; border: 1px solid #555; border-radius: 4px;
-            padding: 2px 8px; font-size: 11px; cursor: pointer; transition: 0.2s;
-        }
-        #toggle-btn:hover { background: #555; }
-
-        #expanded-view { display: flex; gap: 20px; align-items: center; }
-        #lobby-left { display: flex; flex-direction: column; }
-        
-        .slot { display: flex; align-items: center; margin-bottom: 8px; font-weight: bold; font-size: 13px; }
-        .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 10px; background: #555; box-shadow: 0 0 5px #000; }
-        .slot.connected .dot { background: #0f0; box-shadow: 0 0 8px #0f0; }
-        .slot.connected { color: #fff; }
-        .slot:not(.connected) { color: #888; }
-        
-        #connect-info { font-size: 12px; color: #aaa; margin-top: 5px; border-top: 1px dashed #444; padding-top: 8px; }
-
-        #qr-container { background: white; padding: 5px; border-radius: 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        #qrcode { margin-top: 2px; }
-        #qr-text { color: black; font-size: 10px; font-weight: bold; text-align: center; }
-
-        /* Minimized State */
-        #minimized-view { display: none; font-size: 13px; font-weight: bold; padding: 5px 0; }
-        #lobby.minimized #expanded-view { display: none; }
-        #lobby.minimized #minimized-view { display: block; }
-        #lobby.minimized #lobby-header { margin-bottom: 0; border-bottom: none; padding-bottom: 0; gap: 15px; }
-        #lobby.minimized #lobby-title { display: none; }
-    </style>
-  </head>
-  <body>
-    
-    <div id="lobby">
-        <div id="lobby-header">
-            <span id="lobby-title">🎮 Cài đặt tay cầm</span>
-            <button id="toggle-btn" onclick="toggleLobby()">➖ Thu nhỏ</button>
-        </div>
-
-        <div id="minimized-view">
-            <span id="mini-status">⏳ Đang tạo phòng (Host)...</span>
-        </div>
-        
-        <div id="expanded-view">
-            <div id="lobby-left">
-                <div id="slot-1" class="slot"><div class="dot"></div> Player 1 (Mũi tên, Z, X)</div>
-                <div id="slot-2" class="slot"><div class="dot"></div> Player 2 (WASD, T, Y)</div>
-                <div id="slot-3" class="slot"><div class="dot"></div> Player 3 (IJKL, P, O)</div>
-                <div id="slot-4" class="slot"><div class="dot"></div> Player 4 (Numpad, 1, 2)</div>
-                <div id="connect-info">Đang khởi tạo máy chủ WebRTC...</div>
+</head>
+<body>
+    <div id="app-container">
+        <!-- FLOATING WEBRTC QR PHONE LOBBY -->
+        <div id="lobby">
+            <div id="lobby-header">
+                <span id="lobby-title">🎮 Tay cầm Điện thoại (P2P)</span>
+                <button id="toggle-btn">➖ Thu nhỏ</button>
             </div>
-            <div id="qr-container" style="display: none;">
-                <div id="qr-text">Quét để chơi</div>
-                <div id="qrcode"></div>
+            <div id="minimized-view">
+                <span id="mini-status">⏳ Đang tạo phòng WebRTC...</span>
+            </div>
+            <div id="expanded-view">
+                <div id="lobby-left">
+                    <div id="slot-1" class="slot"><div class="dot"></div> P1 (Arrows + Z/X)</div>
+                    <div id="slot-2" class="slot"><div class="dot"></div> P2 (WASD + T/Y)</div>
+                    <div id="slot-3" class="slot"><div class="dot"></div> P3 (IJKL + P/O)</div>
+                    <div id="slot-4" class="slot"><div class="dot"></div> P4 (Numpad 8456 + 1/2)</div>
+                    <div id="connect-info">Đang kết nối máy chủ P2P...</div>
+                </div>
+                <div id="qr-container" style="display: none;">
+                    <div id="qr-text">Quét để chơi</div>
+                    <div id="qrcode"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- NATIVE HTML5 GAME CANVAS (900x600 STAGE) -->
+        <canvas id="game-canvas" width="900" height="600"></canvas>
+
+        <!-- 1. MAIN MENU OVERLAY -->
+        <div id="menu-screen" class="screen-overlay">
+            <div class="menu-box">
+                <h1 class="game-logo-title">GUN MAYHEM 2</h1>
+                <div class="game-logo-sub">MORE MAYHEM • NATIVE WEB EDITION</div>
+                <div class="menu-btn-list">
+                    <button id="btn-menu-custom" class="menu-main-btn accent">⚔️ CUSTOM GAME (1–4P)</button>
+                    <button id="btn-menu-campaign" class="menu-main-btn">🏆 CAMPAIGN (16 MISSIONS)</button>
+                    <button id="btn-menu-library" class="menu-main-btn">🔫 WEAPON LIBRARY (86 GUNS)</button>
+                    <button id="btn-menu-options" class="menu-main-btn">⚙️ OPTIONS & CONTROLS</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. CUSTOM GAME SETUP SCREEN -->
+        <div id="setup-screen" class="screen-overlay" style="display: none;">
+            <div class="panel-container">
+                <div class="panel-top-bar">
+                    <button id="btn-setup-back" class="secondary-btn">⬅ MENU CHÍNH</button>
+                    <h2 class="panel-title">PLAYER & ARENA SETUP</h2>
+                    <button id="btn-setup-start" class="primary-btn" style="font-size: 15px; padding: 10px 24px;">▶ START MATCH!</button>
+                </div>
+
+                <div class="match-settings-bar">
+                    <div class="setting-item">
+                        <label for="select-map">Bản đồ:</label>
+                        <select id="select-map"></select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="select-mode">Chế độ:</label>
+                        <select id="select-mode"></select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="input-lives">Mạng (Lives):</label>
+                        <input type="number" id="input-lives" min="1" max="99" value="10" />
+                    </div>
+                    <div class="setting-item">
+                        <label><input type="checkbox" id="chk-crates" checked /> Hòm Súng (Crates)</label>
+                    </div>
+                    <div class="setting-item">
+                        <label><input type="checkbox" id="chk-powerups" checked /> Powerups</label>
+                    </div>
+                    <span id="map-preview-label" style="font-size:12px; color:#ffee58; font-weight:700;"></span>
+                    <span id="mode-desc"></span>
+                </div>
+
+                <div id="player-cards-grid"></div>
+            </div>
+        </div>
+
+        <!-- 3. CAMPAIGN SCREEN -->
+        <div id="campaign-screen" class="screen-overlay" style="display: none;">
+            <div class="panel-container">
+                <div class="panel-top-bar">
+                    <button id="btn-campaign-back" class="secondary-btn">⬅ MENU CHÍNH</button>
+                    <h2 class="panel-title">CAMPAIGN MISSIONS (16 MÀN)</h2>
+                    <label style="font-size: 13px; font-weight: 800; color: #69f0ae;">
+                        <input type="checkbox" id="campaign-coop-toggle" /> 👥 Chơi Co-op 2 Người (P1 + P2)
+                    </label>
+                </div>
+                <div id="campaign-grid"></div>
+            </div>
+        </div>
+
+        <!-- 4. IN-GAME HUD -->
+        <div id="hud-layer" style="display: none;">
+            <div class="hud-top-bar">
+                <div id="killfeed"></div>
+                <div id="hud-mode-banner" class="hud-top-center">Last Man Standing</div>
+                <div class="hud-top-actions">
+                    <button id="btn-hud-pause" class="secondary-btn">⏸ PAUSE</button>
+                    <button id="btn-hud-exit" class="danger-btn">✖ THOÁT</button>
+                </div>
+            </div>
+            <div id="hud-cards"></div>
+        </div>
+
+        <!-- 5. WEAPON LIBRARY MODAL -->
+        <div id="library-modal" class="modal-backdrop">
+            <div class="modal-box">
+                <div class="panel-top-bar">
+                    <h2 class="panel-title">🔫 WEAPON LIBRARY (86 VŨ KHÍ GỐC)</h2>
+                    <button id="btn-lib-close" class="danger-btn">✖ ĐÓNG</button>
+                </div>
+                <div id="lib-tabs"></div>
+                <div id="lib-weapons-grid"></div>
+            </div>
+        </div>
+
+        <!-- 6. OPTIONS & CONTROLS MODAL -->
+        <div id="options-modal" class="modal-backdrop">
+            <div class="modal-box" style="max-width: 560px;">
+                <div class="panel-top-bar">
+                    <h2 class="panel-title">⚙️ OPTIONS & CONTROLS</h2>
+                    <button id="btn-opt-close" class="danger-btn">✖ ĐÓNG</button>
+                </div>
+                <div style="display:flex; gap:24px; margin-bottom:16px; font-size:15px; font-weight:800;">
+                    <label><input type="checkbox" id="opt-sound" checked /> 🔊 Hiệu ứng Âm thanh (SFX)</label>
+                    <label><input type="checkbox" id="opt-music" checked /> 🎵 Nhạc nền (Original OST)</label>
+                </div>
+                <div style="background:#111620; padding:14px; border-radius:10px; font-size:13px; line-height:1.7;">
+                    <div style="color:#ffee58; font-weight:900; margin-bottom:6px;">⌨️ BẢNG PHÍM TRÊN MÁY TÍNH:</div>
+                    <div>• <b>Player 1:</b> Phím Mũi tên (Di chuyển / Nhảy) — <b>Z</b> (Bắn) — <b>X</b> (Ném Bom)</div>
+                    <div>• <b>Player 2:</b> <b>W A S D</b> (Di chuyển / Nhảy) — <b>T</b> (Bắn) — <b>Y</b> (Ném Bom)</div>
+                    <div>• <b>Player 3:</b> <b>I J K L</b> (Di chuyển / Nhảy) — <b>P</b> (Bắn) — <b>O</b> (Ném Bom)</div>
+                    <div>• <b>Player 4:</b> <b>Numpad 8/4/5/6</b> (Di chuyển / Nhảy) — <b>Numpad 1</b> (Bắn) — <b>Numpad 2</b> (Ném Bom)</div>
+                    <div style="margin-top:8px; color:#69f0ae;">📱 <b>Tay cầm Điện thoại:</b> Quét mã QR ở góc trên bên trái để biến tối đa 4 điện thoại thành tay cầm không dây!</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 7. PAUSE MODAL -->
+        <div id="pause-modal" class="modal-backdrop">
+            <div class="modal-box" style="max-width: 360px; text-align: center;">
+                <h2 class="panel-title" style="margin-bottom: 18px;">⏸ GAME PAUSED</h2>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button id="btn-pause-resume" class="primary-btn" style="padding: 12px; font-size: 15px;">▶ TIẾP TỤC CHƠI</button>
+                    <button id="btn-pause-exit" class="danger-btn" style="padding: 12px; font-size: 15px;">⏹ KẾT THÚC TRẬN</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 8. POST-GAME SUMMARY MODAL -->
+        <div id="summary-modal" class="modal-backdrop">
+            <div class="modal-box" style="max-width: 640px; text-align: center;">
+                <h2 id="summary-winner-title" class="panel-title" style="font-size: 28px;">PLAYER 1 WINS!</h2>
+                <div id="summary-winner-sub" style="color: #69f0ae; font-weight: 800; font-size: 14px; margin-bottom: 10px;">FLAWLESS (LIKE A BOSS)</div>
+                <table class="summary-table">
+                    <thead>
+                        <tr>
+                            <th>Player</th>
+                            <th>Kills</th>
+                            <th>Deaths</th>
+                            <th>K/D</th>
+                            <th>Accuracy</th>
+                            <th>Pickups</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summary-tbody"></tbody>
+                </table>
+                <div style="display: flex; justify-content: center; gap: 12px; margin-top: 10px;">
+                    <button id="btn-summary-rematch" class="primary-btn" style="padding: 10px 22px; font-size: 14px;">🔄 CHƠI LẠI</button>
+                    <button id="btn-summary-setup" class="secondary-btn" style="padding: 10px 22px; font-size: 14px;">⚙️ ĐỔI CÀI ĐẶT</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <div id="ruffle"></div>
-    <script src="ruffle.js"></script>
-    <script>
-      let isLobbyMinimized = false;
-      function toggleLobby() {
-          isLobbyMinimized = !isLobbyMinimized;
-          const lobby = document.getElementById('lobby');
-          const btn = document.getElementById('toggle-btn');
-          if (isLobbyMinimized) {
-              lobby.classList.add('minimized');
-              btn.innerText = '➕ Hiện mã QR';
-          } else {
-              lobby.classList.remove('minimized');
-              btn.innerText = '➖ Thu nhỏ';
-          }
-      }
-
-      const keyMap = {
-          1: { up: {code:'ArrowUp',key:'ArrowUp',keyCode:38}, down: {code:'ArrowDown',key:'ArrowDown',keyCode:40}, left: {code:'ArrowLeft',key:'ArrowLeft',keyCode:37}, right: {code:'ArrowRight',key:'ArrowRight',keyCode:39}, shoot: {code:'KeyZ',key:'z',keyCode:90}, bomb: {code:'KeyX',key:'x',keyCode:88} },
-          2: { up: {code:'KeyW',key:'w',keyCode:87}, down: {code:'KeyS',key:'s',keyCode:83}, left: {code:'KeyA',key:'a',keyCode:65}, right: {code:'KeyD',key:'d',keyCode:68}, shoot: {code:'KeyT',key:'t',keyCode:84}, bomb: {code:'KeyY',key:'y',keyCode:89} },
-          3: { up: {code:'KeyI',key:'i',keyCode:73}, down: {code:'KeyK',key:'k',keyCode:75}, left: {code:'KeyJ',key:'j',keyCode:74}, right: {code:'KeyL',key:'l',keyCode:76}, shoot: {code:'KeyP',key:'p',keyCode:80}, bomb: {code:'KeyO',key:'o',keyCode:79} },
-          4: { up: {code:'Numpad8',key:'8',keyCode:104}, down: {code:'Numpad5',key:'5',keyCode:101}, left: {code:'Numpad4',key:'4',keyCode:100}, right: {code:'Numpad6',key:'6',keyCode:102}, shoot: {code:'Numpad1',key:'1',keyCode:97}, bomb: {code:'Numpad2',key:'2',keyCode:98} }
-      };
-
-      // --- WEBRTC HOST LOGIC ---
-      const peer = new Peer();
-      let connections = [];
-      let playerMap = {}; // peerId -> playerNum
-
-      peer.on('open', (id) => {
-          const controllerUrl = window.location.origin + window.location.pathname.replace('index.html', '') + 'controller.html?host=' + id;
-          document.getElementById('connect-info').innerText = '✅ Quét mã QR bên cạnh để chơi';
-          document.getElementById('qr-container').style.display = 'flex';
-          
-          document.getElementById("qrcode").innerHTML = "";
-          new QRCode(document.getElementById("qrcode"), {
-              text: controllerUrl,
-              width: 90, height: 90,
-              colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.L
-          });
-          updateLobbyUI();
-      });
-
-      function getTakenSlots() {
-          return Object.values(playerMap);
-      }
-
-      function broadcast(data) {
-          connections.forEach(conn => {
-              if (conn.open) conn.send(data);
-          });
-      }
-
-      peer.on('connection', (conn) => {
-          connections.push(conn);
-          
-          conn.on('open', () => {
-              conn.send({ type: 'playersUpdate', taken: getTakenSlots() });
-          });
-
-          conn.on('data', (data) => {
-              if (data.type === 'requestPlayer') {
-                  const taken = getTakenSlots();
-                  if (taken.includes(data.num)) {
-                      conn.send({ type: 'requestPlayerResponse', success: false, message: 'Slot này đã có người chơi!' });
-                  } else {
-                      for (let [pid, pNum] of Object.entries(playerMap)) {
-                          if (pid === conn.peer) delete playerMap[pid];
-                      }
-                      playerMap[conn.peer] = data.num;
-                      conn.send({ type: 'requestPlayerResponse', success: true, num: data.num });
-                      
-                      broadcast({ type: 'playersUpdate', taken: getTakenSlots() });
-                      updateLobbyUI();
-                  }
-              } else if (data.type === 'action') {
-                  const player = playerMap[conn.peer];
-                  if (player && data.player === player) {
-                      simulateKey(player, data.action, data.state);
-                  }
-              }
-          });
-
-          conn.on('close', () => {
-              if (playerMap[conn.peer]) {
-                  delete playerMap[conn.peer];
-                  broadcast({ type: 'playersUpdate', taken: getTakenSlots() });
-                  updateLobbyUI();
-              }
-              connections = connections.filter(c => c.peer !== conn.peer);
-          });
-      });
-
-      function updateLobbyUI() {
-          const takenSlots = getTakenSlots();
-          let miniText = [];
-          for(let i=1; i<=4; i++) {
-              const el = document.getElementById(`slot-${i}`);
-              if (takenSlots.includes(i)) {
-                  el.classList.add('connected');
-                  el.innerHTML = `<div class="dot"></div> Player ${i} - ĐÃ KẾT NỐI 📱`;
-                  miniText.push(`P${i}`);
-              } else {
-                  el.classList.remove('connected');
-                  el.innerHTML = `<div class="dot"></div> Player ${i} - Đang chờ...`;
-              }
-          }
-          
-          const miniStatus = document.getElementById('mini-status');
-          if (miniText.length > 0) {
-              miniStatus.innerHTML = `🎮 Đang chơi: <span style="color:#0f0">${miniText.join(', ')}</span>`;
-          } else {
-              miniStatus.innerHTML = `⏳ Chưa có tay cầm nào`;
-          }
-      }
-
-      function simulateKey(player, action, state) {
-          const keyDef = keyMap[player][action];
-          if (!keyDef) return;
-
-          const eventType = state === 'pressed' ? 'keydown' : 'keyup';
-          const event = new KeyboardEvent(eventType, {
-              key: keyDef.key, code: keyDef.code, keyCode: keyDef.keyCode, which: keyDef.keyCode,
-              bubbles: true, cancelable: true
-          });
-          window.dispatchEvent(event);
-      }
-
-      // --- RUFFLE LOGIC ---
-      window.RufflePlayer = window.RufflePlayer || {};
-      window.addEventListener("load", (event) => {
-        const ruffle = window.RufflePlayer.newest();
-        const player = ruffle.createPlayer();
-        const container = document.getElementById("ruffle");
-        player.id = "player";
-        player.style.width = "100%";
-        player.style.height = "100%";
-        container.appendChild(player);
-        player.load("swf.swf");
-      });
-    </script>
-  </body>
+    <script type="module" src="js/main.js"></script>
+</body>
 </html>

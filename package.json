@@ -1,18 +1,10 @@
 {
-  "name": "gun-mayhem-main",
-  "version": "1.0.0",
-  "description": "",
-  "main": "ruffle.js",
+  "name": "gun-mayhem-multiplayer",
+  "version": "2.0.0",
+  "description": "Gun Mayhem 2: More Mayhem — Native HTML5 Canvas & WebRTC Phone Console",
+  "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "dependencies": {
-    "express": "^5.2.1",
-    "socket.io": "^4.8.4"
-  }
+  "license": "ISC"
 }
