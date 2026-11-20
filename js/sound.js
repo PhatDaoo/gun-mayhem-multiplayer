@@ -1,4 +1,4 @@
-// Authentic Gun Mayhem 2 Audio Manager (Original MP3/WAV Assets)
+// Authentic Gun Mayhem 2 Audio Manager (Web Audio API SFX for iOS/iPadOS + HTML5 Music)
 
 import { SOUND_FILES, WEAPONS } from './gamedata.js';
 
@@ -8,17 +8,34 @@ class SoundManager {
         this.musicON = localStorage.getItem('gm_musicON') !== 'false';
         this.currentMusic = null;
         this.currentMusicTrack = null;
-        this.audioPool = new Map();
-        this.unlocked = false;
+
+        this.audioCtx = null;
+        this.bufferCache = new Map();
+        this.loadingBuffers = new Map();
+        this.lastPlayedAt = new Map();
 
         const unlock = () => {
-            this.unlocked = true;
+            this.ensureAudioContext();
+            if (this.audioCtx && this.audioCtx.state === 'suspended') {
+                this.audioCtx.resume().catch(() => {});
+            }
             if (this.musicON && this.currentMusic && this.currentMusic.paused) {
                 this.currentMusic.play().catch(() => {});
             }
         };
+        window.addEventListener('touchstart', unlock, { passive: true });
         window.addEventListener('pointerdown', unlock, { passive: true });
         window.addEventListener('keydown', unlock, { passive: true });
+    }
+
+    ensureAudioContext() {
+        if (!this.audioCtx) {
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (Ctx) {
+                this.audioCtx = new Ctx();
+            }
+        }
+        return this.audioCtx;
     }
 
     setSoundON(val) {
@@ -40,11 +57,34 @@ class SoundManager {
         if (!logicalName) return null;
         if (SOUND_FILES[logicalName]) return SOUND_FILES[logicalName];
         if (logicalName === 'emp.wav') return SOUND_FILES['ding.wav'];
-        // Search by substring
         for (const [k, v] of Object.entries(SOUND_FILES)) {
             if (k.includes(logicalName)) return v;
         }
         return null;
+    }
+
+    async loadBuffer(src) {
+        if (this.bufferCache.has(src)) return this.bufferCache.get(src);
+        if (this.loadingBuffers.has(src)) return this.loadingBuffers.get(src);
+
+        const ctx = this.ensureAudioContext();
+        if (!ctx) return null;
+
+        const promise = fetch(src)
+            .then((r) => r.arrayBuffer())
+            .then((ab) => ctx.decodeAudioData(ab))
+            .then((buf) => {
+                this.bufferCache.set(src, buf);
+                this.loadingBuffers.delete(src);
+                return buf;
+            })
+            .catch(() => {
+                this.loadingBuffers.delete(src);
+                return null;
+            });
+
+        this.loadingBuffers.set(src, promise);
+        return promise;
     }
 
     play(logicalName, volume = 0.55) {
@@ -52,57 +92,70 @@ class SoundManager {
         const src = this.resolveSoundPath(logicalName);
         if (!src) return;
 
-        try {
-            let pool = this.audioPool.get(src);
-            if (!pool) {
-                pool = [];
-                this.audioPool.set(src, pool);
-            }
-            let audio = pool.find((a) => a.paused || a.ended);
-            if (!audio) {
-                if (pool.length < 8) {
-                    audio = new Audio(src);
-                    pool.push(audio);
-                } else {
-                    audio = pool[0];
-                }
-            }
-            audio.volume = Math.max(0, Math.min(1, volume));
-            audio.currentTime = 0;
-            audio.play().catch(() => {});
-        } catch (e) {
-            // Ignore autoplay restriction errors
+        // Throttle identical sound within 35ms to avoid clipping/overhead on rapid fire
+        const now = performance.now();
+        const prev = this.lastPlayedAt.get(src) || 0;
+        if (now - prev < 35) return;
+        this.lastPlayedAt.set(src, now);
+
+        const ctx = this.ensureAudioContext();
+        if (!ctx) return;
+        if (ctx.state === 'suspended') {
+            ctx.resume().catch(() => {});
         }
+
+        const buf = this.bufferCache.get(src);
+        if (buf) {
+            this.playBuffer(ctx, buf, volume);
+        } else {
+            this.loadBuffer(src).then((decoded) => {
+                if (decoded && this.soundON) {
+                    this.playBuffer(ctx, decoded, volume);
+                }
+            });
+        }
+    }
+
+    playBuffer(ctx, buffer, volume) {
+        try {
+            const source = ctx.createBufferSource();
+            source.buffer = buffer;
+            const gain = ctx.createGain();
+            gain.gain.value = Math.max(0, Math.min(1, volume));
+            source.connect(gain);
+            gain.connect(ctx.destination);
+            source.start(0);
+        } catch (e) {}
     }
 
     playGunSound(wepId) {
         const wep = WEAPONS[wepId];
         const snd = wep ? wep.sound : 'pistol3.wav';
-        this.play(snd, 0.5);
+        this.play(snd, 0.45);
     }
 
     playDropSound() {
         const idx = Math.floor(Math.random() * 3) + 1;
-        this.play(`drop${idx}.wav`, 0.7);
+        this.play(`drop${idx}.wav`, 0.65);
     }
 
     playExplodeSound() {
         const idx = Math.floor(Math.random() * 4) + 1;
-        this.play(`explosion${idx}.wav`, 0.85);
+        this.play(`explosion${idx}.wav`, 0.8);
     }
 
     playHitSound() {
         const idx = Math.floor(Math.random() * 2) + 1;
-        this.play(`hit${idx}.wav`, 0.75);
+        this.play(`hit${idx}.wav`, 0.7);
     }
 
     playDieSound() {
         const idx = Math.floor(Math.random() * 4) + 1;
-        this.play(`die${idx}.wav`, 0.85);
+        this.play(`die${idx}.wav`, 0.8);
     }
 
     playBtnSound() {
-        this.play('btn.wav', 0.7);
+        this.play('btn.wav', 0.65);
     }
 
     playMusic(trackName = 'music222.mp3') {
@@ -122,7 +175,7 @@ class SoundManager {
             const audio = new Audio(src);
             audio.dataset.track = trackName;
             audio.loop = true;
-            audio.volume = 0.38;
+            audio.volume = 0.35;
             this.currentMusic = audio;
             audio.play().catch(() => {});
         } catch (e) {}

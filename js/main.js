@@ -15,7 +15,7 @@ import {
     CAMPAIGN_MISSIONS,
     SKIN_COLORS_HEX
 } from './gamedata.js';
-import { preloadCoreAssets, drawSpriteFrame, getImage } from './assets.js';
+import { preloadCoreAssets, preloadPlayerAssets, drawSpriteFrame, getImage } from './assets.js';
 import { soundManager } from './sound.js';
 import { inputManager } from './input.js';
 import { HostNetworkManager } from './network.js';
@@ -87,22 +87,25 @@ class GunMayhemApp {
         // Start attract-mode background battle on Main Menu
         this.startAttractBattle();
 
-        // Fixed-timestep 35 FPS game loop (matching SWF 35.0 FPS physics) + 60Hz render
+        // Fixed-timestep 35 FPS game loop (matching SWF 35.0 FPS physics & render)
         this.lastTick = performance.now();
         this.accumulator = 0;
         this.stepMs = 1000 / FPS;
+        this._hudCache = {};
 
         const loop = (now) => {
             const dt = Math.min(100, now - this.lastTick);
             this.lastTick = now;
             this.accumulator += dt;
 
+            let didStep = false;
             while (this.accumulator >= this.stepMs) {
                 this.accumulator -= this.stepMs;
                 this.updateWorldStep();
+                didStep = true;
             }
 
-            if (this.world) {
+            if (didStep && this.world) {
                 this.renderer.render(this.world);
             }
             requestAnimationFrame(loop);
@@ -1033,8 +1036,15 @@ class GunMayhemApp {
             lobby.classList.add('minimized');
             document.getElementById('toggle-btn').innerText = '➕ Hiện QR';
             document.getElementById('killfeed').innerHTML = '';
+            this._hudCache = {};
+            if (this.world && this.world.players) {
+                this.world.players.forEach((p) => preloadPlayerAssets(p));
+            }
         } else if (nextState === 'MENU') {
             this.startAttractBattle();
+            if (this.world && this.world.players) {
+                this.world.players.forEach((p) => preloadPlayerAssets(p));
+            }
         } else if (nextState === 'SETUP') {
             this.renderSetupCards();
         }
@@ -1431,15 +1441,20 @@ class GunMayhemApp {
     updateHUD(w) {
         const bannerEl = document.getElementById('hud-mode-banner');
         if (bannerEl) {
+            let bannerText;
             if (w.isTest) {
-                bannerEl.textContent = '🎯 WEAPON TESTING ARENA (Nhấn ESC để thoát)';
+                bannerText = '🎯 WEAPON TESTING ARENA (Nhấn ESC để thoát)';
             } else if (w.gamemode === 5) {
-                bannerEl.textContent = `🤖 SURVIVAL — WAVE ${w.survivalWave}`;
+                bannerText = `🤖 SURVIVAL — WAVE ${w.survivalWave}`;
             } else if (w.campaignMission) {
-                bannerEl.textContent = `⚔️ MISSION #${w.campaignMission.id}: ${w.campaignMission.title}`;
+                bannerText = `⚔️ MISSION #${w.campaignMission.id}: ${w.campaignMission.title}`;
             } else {
                 const gm = GAME_MODES.find((g) => g.id === w.gamemode);
-                bannerEl.textContent = `${gm ? gm.name : 'Match'} • ${w.map.name}`;
+                bannerText = `${gm ? gm.name : 'Match'} • ${w.map.name}`;
+            }
+            if (this._hudCache.banner !== bannerText) {
+                this._hudCache.banner = bannerText;
+                bannerEl.textContent = bannerText;
             }
         }
 
@@ -1448,6 +1463,7 @@ class GunMayhemApp {
 
         const mainPlayers = w.players.filter((p) => !p.isClone && !p.isZombie);
         if (cardsContainer.children.length !== mainPlayers.length) {
+            this._hudCache.cards = {};
             cardsContainer.innerHTML = mainPlayers
                 .map(
                     (p, idx) => `
@@ -1467,14 +1483,29 @@ class GunMayhemApp {
         }
 
         w.hudSyncCounter = (w.hudSyncCounter || 0) + 1;
+        if (!this._hudCache.cards) this._hudCache.cards = {};
 
         mainPlayers.forEach((p, idx) => {
             const card = document.getElementById(`hud-card-${idx}`);
             if (!card) return;
-            card.style.opacity = p.dead ? '0.4' : '1';
+            const prev = this._hudCache.cards[idx] || (this._hudCache.cards[idx] = {});
+
+            const opacity = p.dead ? '0.4' : '1';
+            if (prev.opacity !== opacity) {
+                prev.opacity = opacity;
+                card.style.opacity = opacity;
+            }
+
             const col = SKIN_COLORS_HEX[(p.color || 1) - 1] || '#4caf50';
-            document.getElementById(`hud-dot-${idx}`).style.background = col;
-            document.getElementById(`hud-pname-${idx}`).textContent = p.name;
+            if (prev.col !== col) {
+                prev.col = col;
+                document.getElementById(`hud-dot-${idx}`).style.background = col;
+            }
+
+            if (prev.name !== p.name) {
+                prev.name = p.name;
+                document.getElementById(`hud-pname-${idx}`).textContent = p.name;
+            }
 
             const isGunGame = w.gamemode === 4 || w.gamemode === 10;
             const livesLabel = isGunGame
@@ -1482,15 +1513,28 @@ class GunMayhemApp {
                 : p.lives > 900
                 ? '❤️ ∞'
                 : `❤️ ${p.lives}`;
-            document.getElementById(`hud-lives-${idx}`).textContent = livesLabel;
-            document.getElementById(`hud-gun-${idx}`).textContent = p.reloading ? 'RELOADING...' : p.gunName;
+            if (prev.lives !== livesLabel) {
+                prev.lives = livesLabel;
+                document.getElementById(`hud-lives-${idx}`).textContent = livesLabel;
+            }
+
+            const gunLabel = p.reloading ? 'RELOADING...' : p.gunName;
+            if (prev.gun !== gunLabel) {
+                prev.gun = gunLabel;
+                document.getElementById(`hud-gun-${idx}`).textContent = gunLabel;
+            }
+
             const ammoLabel = p.bullets > 900 ? '∞' : p.bullets;
             const bombLabel = p.offhandnumber > 0 ? ` • 💣${p.offhandammo > 900 ? '∞' : p.offhandammo}` : '';
-            document.getElementById(`hud-ammo-${idx}`).textContent = `🔋 ${ammoLabel}${bombLabel}`;
+            const ammoText = `🔋 ${ammoLabel}${bombLabel}`;
+            if (prev.ammoText !== ammoText) {
+                prev.ammoText = ammoText;
+                document.getElementById(`hud-ammo-${idx}`).textContent = ammoText;
+            }
 
             if (!p.isAI && w.hudSyncCounter % 6 === 0) {
                 this.network.sendHudToSlot(p.slot, {
-                    gun: p.reloading ? 'RELOADING...' : p.gunName,
+                    gun: gunLabel,
                     ammo: ammoLabel,
                     bombs: p.offhandnumber > 0 ? (p.offhandammo > 900 ? '∞' : p.offhandammo) : 0,
                     lives: isGunGame ? `LV ${p.currentlevel}` : p.lives > 900 ? '∞' : p.lives

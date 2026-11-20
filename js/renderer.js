@@ -7,7 +7,7 @@ import {
     WEAPONS,
     SKIN_COLORS_HEX
 } from './gamedata.js';
-import { drawSpriteFrame, getImage } from './assets.js';
+import { drawSpriteFrame, drawCachedMapLayer, getImage } from './assets.js';
 import { POWERUP_NAMES } from './entities.js';
 
 /**
@@ -144,9 +144,9 @@ export function renderCharacterPreviewCanvas(canvas, config) {
 export class ArenaRenderer {
     constructor(canvas) {
         this.canvas = canvas;
-        this.ctx = canvas.getContext('2d');
+        this.ctx = canvas.getContext('2d', { alpha: false });
         this.weatherParticles = [];
-        for (let i = 0; i < 70; i++) {
+        for (let i = 0; i < 45; i++) {
             this.weatherParticles.push({
                 x: Math.random() * 1100 - 100,
                 y: Math.random() * 700 - 50,
@@ -158,9 +158,8 @@ export class ArenaRenderer {
 
     render(world) {
         const ctx = this.ctx;
-        ctx.clearRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
 
-        // Sky backdrop fallback
+        // Opaque sky backdrop (no clearRect needed with alpha: false)
         ctx.fillStyle = '#18202c';
         ctx.fillRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
 
@@ -169,13 +168,13 @@ export class ArenaRenderer {
         const camY = world.camY + world.shakeY;
 
         // 1. Far Parallax Layer (scene1: moves at 0.1x camera offset)
-        drawSpriteFrame(ctx, SPRITE_METAS.scene1, mapId, camX * 0.1, camY * 0.1);
+        drawCachedMapLayer(ctx, SPRITE_METAS.scene1, mapId, camX * 0.1, camY * 0.1);
 
         // 2. Mid Parallax Layer (scene2: moves at 0.5x camera offset)
-        drawSpriteFrame(ctx, SPRITE_METAS.scene2, mapId, camX * 0.5, camY * 0.5);
+        drawCachedMapLayer(ctx, SPRITE_METAS.scene2, mapId, camX * 0.5, camY * 0.5);
 
         // 3. Foreground Map Art (DefineSprite_1835 placed at tx=51.1, ty=192.6 in world space)
-        const fgDrawn = drawSpriteFrame(ctx, SPRITE_METAS.foreground, mapId, 51.1 + camX, 192.6 + camY);
+        const fgDrawn = drawCachedMapLayer(ctx, SPRITE_METAS.foreground, mapId, 51.1 + camX, 192.6 + camY);
 
         ctx.save();
         ctx.translate(camX, camY);
@@ -352,10 +351,15 @@ export class ArenaRenderer {
         ctx.fillStyle = bg;
         ctx.strokeStyle = border;
         ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.roundRect(p.x - bw / 2, tagY - bh, bw, bh, 4);
-        ctx.fill();
-        ctx.stroke();
+        if (ctx.roundRect) {
+            ctx.beginPath();
+            ctx.roundRect(p.x - bw / 2, tagY - bh, bw, bh, 4);
+            ctx.fill();
+            ctx.stroke();
+        } else {
+            ctx.fillRect(p.x - bw / 2, tagY - bh, bw, bh);
+            ctx.strokeRect(p.x - bw / 2, tagY - bh, bw, bh);
+        }
 
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
